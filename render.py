@@ -258,8 +258,9 @@ def layout_scene(res: ElbowResult) -> Tuple[List[Pt], List[Op]]:
         L0 = p.midline
         e = p.miter_edges
         ybot = y_top - hs[i]      # 该节最低点
-        theo_top = [(pt(j), ybot + amp + L0 + amp * cosc(pt(j))) for j in range(n_pts + 1)]
         if p.kind == "full":
+            # 全节: 上下斜口, 长边=L0+2amp, 短边=L0-2amp
+            theo_top = [(pt(j), ybot + amp + L0 + amp * cosc(pt(j))) for j in range(n_pts + 1)]
             theo_bot = [(pt(j), ybot + amp - amp * cosc(pt(j))) for j in range(n_pts + 1)]
             ops.append(_poly(theo_top + list(reversed(theo_bot)),
                              fill="#e6f2ff", outline="#228", width=1.3))
@@ -267,7 +268,8 @@ def layout_scene(res: ElbowResult) -> Tuple[List[Pt], List[Op]]:
             cut_bot = [(pt(j), ybot + amp - W - amp * cosc(pt(j))) for j in range(n_pts + 1)]
             ops.append(_poly(cut_top + list(reversed(cut_bot)), fill="", outline="#f00", width=1.3))
             pts.extend(theo_top + theo_bot + cut_top + cut_bot)
-        else:                     # half: 下端方口
+        else:                     # half: 下端方口, 长边=L0+amp, 短边=L0-amp
+            theo_top = [(pt(j), ybot + L0 + amp * cosc(pt(j))) for j in range(n_pts + 1)]
             ops.append(_poly(theo_top + [(circ, ybot), (0, ybot)],
                              fill="#e6f2ff", outline="#228", width=1.3))
             cut_top = [(pt(j), ybot + L0 + W + amp * cosc(pt(j))) for j in range(n_pts + 1)]

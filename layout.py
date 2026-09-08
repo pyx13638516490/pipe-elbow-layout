@@ -27,55 +27,60 @@ def _poly(builder: DXFBuilder, layer: str, pts) -> None:
 
 def draw_piece(builder: DXFBuilder, piece: PieceResult, od: float, y_base: float,
                W: float, x_lay: float = 0.0) -> float:
-    """画出单节模板（闭合形状）；该节最低点落在 y_base，返回该节占用高度。"""
+    """画出单节模板（闭合形状，1:1 mm）；该节最低点落在 y_base，返回该节占用高度。
+
+    半节: 下端为方口(平直), 上端为斜口;  长边=中线+振幅, 短边=中线-振幅。
+    全节: 上下都是斜口;  长边=中线+2×振幅, 短边=中线-2×振幅。
+    """
     circ = _circ(od)
     amp = piece.amp
     L0 = piece.midline
     kind = piece.kind
     e = piece.miter_edges
-    yb = y_base + amp + e * W        # 让最低点(下弧谷)正好落在 y_base
 
-    def curve(shift_y: float, top: bool):
-        pts = []
-        for i in range(N_PTS + 1):
-            u = circ * i / N_PTS
-            c = _cosu(u, circ)
-            v = amp * c if top else -amp * c
-            pts.append((x_lay + u, yb + v + shift_y))
-        return pts
+    def cosc(u):
+        return math.cos(u * 2.0 * math.pi / circ)
 
-    # 闭合模板轮廓: 上正弦 + 下正弦(或方口) + 两端竖边(由 close 自动连接)
-    theo_top = curve(L0, True)
+    def uu(i):
+        return x_lay + circ * i / N_PTS
+
     if kind == "full":
-        theo_pts = theo_top + curve(0.0, False)[::-1]
-    else:  # half: 下端方口平直
-        theo_pts = theo_top + [(x_lay + circ, y_base), (x_lay, y_base)]
-    builder.add_polyline("THEO", theo_pts, closed=True)
+        C = y_base + amp + W                 # 使下切谷正好落在 y_base
+        theo_bot = [(uu(i), C - amp * cosc(uu(i) - x_lay)) for i in range(N_PTS + 1)]
+        theo_top = [(uu(i), C + L0 + amp * cosc(uu(i) - x_lay)) for i in range(N_PTS + 1)]
+        builder.add_polyline("THEO", theo_top + theo_bot[::-1], closed=True)
+        cut_bot = [(x, y - W) for (x, y) in theo_bot]
+        cut_top = [(x, y + W) for (x, y) in theo_top]
+        builder.add_polyline("CUT", cut_top + cut_bot[::-1], closed=True)
+        # 长/短边(理论) 竖向参考线: u=0 长边, u=π 短边
+        long_bot, long_top = C - amp, C + L0 + amp
+        short_bot, short_top = C + amp, C + L0 - amp
+        H = L0 + 2.0 * amp + 2.0 * W
+    else:  # half
+        theo_top = [(uu(i), y_base + L0 + amp * cosc(uu(i) - x_lay)) for i in range(N_PTS + 1)]
+        builder.add_polyline("THEO", theo_top + [(x_lay + circ, y_base), (x_lay, y_base)], closed=True)
+        cut_top = [(x, y + W) for (x, y) in theo_top]
+        builder.add_polyline("CUT", cut_top + [(x_lay + circ, y_base), (x_lay, y_base)], closed=True)
+        long_bot, long_top = y_base, y_base + L0 + amp
+        short_bot, short_top = y_base, y_base + L0 - amp
+        H = L0 + amp + W
 
-    cut_top = curve(L0 + e * W, True)
-    if kind == "full":
-        cut_pts = cut_top + curve(-e * W, False)[::-1]
-    else:
-        cut_pts = cut_top + [(x_lay + circ, y_base), (x_lay, y_base)]
-    builder.add_polyline("CUT", cut_pts, closed=True)
+    # 长/短边竖向参考线(青)
+    builder.add_line("DIM", x_lay, long_bot, x_lay, long_top)
+    builder.add_line("DIM", x_lay + circ / 2.0, short_bot, x_lay + circ / 2.0, short_top)
 
-    # ---- 长/短边参考线 (青) ----
-    y_top_long = yb + L0 + amp
-    y_top_short = yb + L0 - amp
-    builder.add_line("DIM", x_lay, y_base, x_lay, y_top_long)
-    builder.add_line("DIM", x_lay + circ / 2.0, y_base, x_lay + circ / 2.0, y_top_short)
-
-    # ---- 标注文字放在模板右侧 (中文, 行距避免重合) ----
+    # 标注文字(中文, 行距避免重合)
     label_h = max(circ * 0.016, 30.0)
     line_sp = label_h * 1.3
     labx = x_lay + circ + 60
-    laby = yb + L0 / 2.0
+    laby = y_base + L0 / 2.0
     kind_cn = "半节" if kind == "half" else "全节"
     builder.add_text("LABEL", f"第{piece.index + 1}节  {kind_cn}", labx, laby + line_sp, label_h)
-    builder.add_text("LABEL", f"理论  长边={piece.long_theo:.0f}  短边={piece.short_theo:.0f}",
+    builder.add_text("LABEL", "理论  长边=%.0f  短边=%.0f" % (piece.long_theo, piece.short_theo),
                      labx, laby, label_h)
-    builder.add_text("LABEL", f"下料  长边={piece.long_cut:.0f}  短边={piece.short_cut:.0f}"
-                     f"  (坡口+{W:.1f})", labx, laby - line_sp, label_h)
+    builder.add_text("LABEL", "下料  长边=%.0f  短边=%.0f  (坡口+%.1f)" % (
+        piece.long_cut, piece.short_cut, W), labx, laby - line_sp, label_h)
+    return H
 
     H = L0 + 2.0 * amp + 2.0 * e * W
     return H
@@ -102,7 +107,7 @@ def generate_dxf(res: ElbowResult) -> DXFBuilder:
     # 图例
     lh = max(circ * 0.016, 30.0)
     b.add_text("LEGEND",
-               "放样展开图(外皮):  绿色=理论线  红色=下切线(含单V坡口余量)  青色=长/短边参考线",
+               "放样展开图(外皮)  单位mm, 按 1:1 绘制  打印请按1:1  |  绿=理论线  红=下切线(含坡口)  青=长/短边",
                10.0, y + lh * 1.2, lh)
     b.add_text("LEGEND",
                "外径OD=%.1f  t=%.1f  α=%.1f°  R=%.1f  θ=%.1f  p=%.1f  g=%.1f  | 需用直管=%.1f mm"
