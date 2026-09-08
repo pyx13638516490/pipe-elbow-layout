@@ -65,14 +65,15 @@ def draw_piece(builder: DXFBuilder, piece: PieceResult, od: float, y_base: float
     builder.add_line("DIM", x_lay, y_base, x_lay, y_top_long)
     builder.add_line("DIM", x_lay + circ / 2.0, y_base, x_lay + circ / 2.0, y_top_short)
 
-    # ---- 标注文字放在模板右侧 ----
-    labx = x_lay + circ + 30
+    # ---- 标注文字放在模板右侧 (高度随图纸比例, 便于CAD看清) ----
+    label_h = max(circ * 0.016, 30.0)
+    labx = x_lay + circ + 60
     laby = yb + L0 / 2.0
-    builder.add_text("LABEL", f"#{piece.index + 1} {kind}", labx, laby - 6, 3.0)
+    builder.add_text("LABEL", f"#{piece.index + 1} {kind}", labx, laby - label_h * 0.7, label_h)
     builder.add_text("LABEL", "THEO  L=%.1f  S=%.1f" % (piece.long_theo, piece.short_theo),
-                     labx, laby, 3.0)
-    builder.add_text("LABEL", "CUT   L=%.1f  S=%.1f  (bevel +%.2f/edge)" % (
-        piece.long_cut, piece.short_cut, W), labx, laby + 6, 3.0)
+                     labx, laby, label_h)
+    builder.add_text("LABEL", "CUT   L=%.1f  S=%.1f  (bevel +%.2f)" % (
+        piece.long_cut, piece.short_cut, W), labx, laby + label_h * 0.7, label_h)
 
     H = L0 + 2.0 * amp + 2.0 * e * W
     return H
@@ -97,12 +98,13 @@ def generate_dxf(res: ElbowResult) -> DXFBuilder:
         b.add_line("DIM", 10.0 + circ + 400, y - h, 10.0 + circ + 400, y)  # 界栏右
 
     # 图例
+    lh = max(circ * 0.016, 30.0)
     b.add_text("LEGEND",
                "STUB LAYOUT (outer surface): GREEN=theo  RED=cut(with single-V bevel)  BLUE=dims/labels",
-               10.0, y + 6, 3.0)
+               10.0, y + lh * 1.2, lh)
     b.add_text("LEGEND",
                "OD=%.1f  t=%.1f  alpha=%.1f deg  R=%.1f  theta=%.1f  p=%.1f  g=%.1f  |  pipe_len=%.1f mm"
                % (od, res.inp.thickness, res.inp.bend_angle_deg, res.R,
                   res.inp.bevel_angle_deg, res.inp.root_face, res.inp.root_gap, res.material_len),
-               10.0, y + 2, 3.0)
+               10.0, y, lh)
     return b

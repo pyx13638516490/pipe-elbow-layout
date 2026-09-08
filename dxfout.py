@@ -17,6 +17,12 @@ def _mm(v: float) -> float:
 class DXFBuilder:
     def __init__(self) -> None:
         self.doc = ezdxf.new("R2010", units=4)   # 4 = mm; 默认含图层 "0", 无需 setup 免字体告警
+        # 设置文本样式字体, 确保 CAD 能渲染文字
+        try:
+            st = self.doc.styles.get("Standard")
+            st.dxf.font = "Arial"
+        except Exception:
+            pass
         self.layers: dict[str, int] = {"0": 7}
         self._msp = self.doc.modelspace()
 
