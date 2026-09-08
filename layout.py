@@ -65,15 +65,17 @@ def draw_piece(builder: DXFBuilder, piece: PieceResult, od: float, y_base: float
     builder.add_line("DIM", x_lay, y_base, x_lay, y_top_long)
     builder.add_line("DIM", x_lay + circ / 2.0, y_base, x_lay + circ / 2.0, y_top_short)
 
-    # ---- 标注文字放在模板右侧 (高度随图纸比例, 便于CAD看清) ----
+    # ---- 标注文字放在模板右侧 (中文, 行距避免重合) ----
     label_h = max(circ * 0.016, 30.0)
+    line_sp = label_h * 1.3
     labx = x_lay + circ + 60
     laby = yb + L0 / 2.0
-    builder.add_text("LABEL", f"#{piece.index + 1} {kind}", labx, laby - label_h * 0.7, label_h)
-    builder.add_text("LABEL", "THEO  L=%.1f  S=%.1f" % (piece.long_theo, piece.short_theo),
+    kind_cn = "半节" if kind == "half" else "全节"
+    builder.add_text("LABEL", f"第{piece.index + 1}节  {kind_cn}", labx, laby + line_sp, label_h)
+    builder.add_text("LABEL", f"理论  长边={piece.long_theo:.0f}  短边={piece.short_theo:.0f}",
                      labx, laby, label_h)
-    builder.add_text("LABEL", "CUT   L=%.1f  S=%.1f  (bevel +%.2f)" % (
-        piece.long_cut, piece.short_cut, W), labx, laby + label_h * 0.7, label_h)
+    builder.add_text("LABEL", f"下料  长边={piece.long_cut:.0f}  短边={piece.short_cut:.0f}"
+                     f"  (坡口+{W:.1f})", labx, laby - line_sp, label_h)
 
     H = L0 + 2.0 * amp + 2.0 * e * W
     return H
@@ -100,10 +102,10 @@ def generate_dxf(res: ElbowResult) -> DXFBuilder:
     # 图例
     lh = max(circ * 0.016, 30.0)
     b.add_text("LEGEND",
-               "STUB LAYOUT (outer surface): GREEN=theo  RED=cut(with single-V bevel)  BLUE=dims/labels",
+               "放样展开图(外皮):  绿色=理论线  红色=下切线(含单V坡口余量)  青色=长/短边参考线",
                10.0, y + lh * 1.2, lh)
     b.add_text("LEGEND",
-               "OD=%.1f  t=%.1f  alpha=%.1f deg  R=%.1f  theta=%.1f  p=%.1f  g=%.1f  |  pipe_len=%.1f mm"
+               "外径OD=%.1f  t=%.1f  α=%.1f°  R=%.1f  θ=%.1f  p=%.1f  g=%.1f  | 需用直管=%.1f mm"
                % (od, res.inp.thickness, res.inp.bend_angle_deg, res.R,
                   res.inp.bevel_angle_deg, res.inp.root_face, res.inp.root_gap, res.material_len),
                10.0, y, lh)

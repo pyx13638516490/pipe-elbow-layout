@@ -17,10 +17,10 @@ def _mm(v: float) -> float:
 class DXFBuilder:
     def __init__(self) -> None:
         self.doc = ezdxf.new("R2010", units=4)   # 4 = mm; 默认含图层 "0", 无需 setup 免字体告警
-        # 设置文本样式字体, 确保 CAD 能渲染文字
+        # 设置文本样式字体, 支持中文 (宋体/SimSun; CAD 可渲染)
         try:
             st = self.doc.styles.get("Standard")
-            st.dxf.font = "Arial"
+            st.dxf.font = "SimSun"
         except Exception:
             pass
         self.layers: dict[str, int] = {"0": 7}
