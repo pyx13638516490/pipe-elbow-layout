@@ -65,12 +65,21 @@ def draw_piece(builder: DXFBuilder, piece: PieceResult, od: float, y_base: float
         short_bot, short_top = y_base, y_base + L0 - amp
         H = L0 + amp + W
 
-    # 长/短边竖向参考线(青)
-    builder.add_line("DIM", x_lay, long_bot, x_lay, long_top)
-    builder.add_line("DIM", x_lay + circ / 2.0, short_bot, x_lay + circ / 2.0, short_top)
+    # CAD 线性尺寸标注: 每节下料(含坡口)的最长边/最短边
+    label_h = max(circ * 0.016, 30.0)
+    off = label_h * 1.2
+    if kind == "full":
+        long_p = ((x_lay, C - amp - W), (x_lay, C + L0 + amp + W))
+        short_p = ((x_lay + circ / 2.0, C + amp - W), (x_lay + circ / 2.0, C + L0 - amp + W))
+    else:
+        long_p = ((x_lay, y_base), (x_lay, y_base + L0 + amp + W))
+        short_p = ((x_lay + circ / 2.0, y_base), (x_lay + circ / 2.0, y_base + L0 - amp + W))
+    builder.add_linear_dim("DIM", (long_p[0][0] - off, (long_p[0][1] + long_p[1][1]) / 2.0),
+                           long_p[0], long_p[1], angle=90, txt=label_h, color=4)
+    builder.add_linear_dim("DIM", (short_p[0][0] + off, (short_p[0][1] + short_p[1][1]) / 2.0),
+                           short_p[0], short_p[1], angle=90, txt=label_h, color=4)
 
     # 标注文字(中文, 行距避免重合)
-    label_h = max(circ * 0.016, 30.0)
     line_sp = label_h * 1.3
     labx = x_lay + circ + 60
     laby = y_base + L0 / 2.0

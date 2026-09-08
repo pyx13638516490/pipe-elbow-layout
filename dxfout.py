@@ -46,6 +46,20 @@ class DXFBuilder:
         t = self._msp.add_text(str(text), dxfattribs={
             "layer": layer, "height": _mm(height), "insert": (_mm(x), _mm(y))})
 
+    def add_linear_dim(self, layer: str, base, p1, p2, angle: float = 90.0,
+                       txt: float = 100.0, color: int = 4) -> None:
+        """添加线性尺寸标注(垂直测量长/短边), 带箭头和数值; base=尺寸线位置。"""
+        dim = self._msp.add_linear_dim(
+            base=(_mm(base[0]), _mm(base[1])),
+            p1=(_mm(p1[0]), _mm(p1[1])), p2=(_mm(p2[0]), _mm(p2[1])),
+            angle=angle, dimstyle="Standard",
+            override={"dimtxt": _mm(txt), "dimasz": _mm(txt * 0.5),
+                      "dimexe": _mm(txt * 0.2), "dimclrt": color,
+                      "dimclrd": color, "dimclre": color,
+                      "dimtm": 0, "dimtol": 0},
+            dxfattribs={"layer": layer})
+        dim.render()
+
     def to_string(self) -> str:
         buf = io.StringIO()
         self.doc.write(buf)
