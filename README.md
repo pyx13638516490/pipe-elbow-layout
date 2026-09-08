@@ -20,6 +20,22 @@
 
 ---
 
+## 一键启动（免安装 EXE）
+
+仓库 `release/` 内已附带打包好的 **Windows 一键启动程序**：
+
+```
+release/弯头放样工具V2.exe
+```
+
+- **免安装 Python、免命令行**，直接双击运行。
+- 也可以用 x64 版本的 **PyInstaller 打包**（见下文“打包成 EXE”）。
+- 若需在其它电脑使用，直接下载该 `.exe` 运行即可（Windows 10/11，64 位）。
+
+> 提示：这是用 PyInstaller `--onefile --windowed` 打包的单文件程序，首次启动因解压内嵌运行时可能稍慢几秒，属正常。
+
+---
+
 ## 界面用法（GUI）
 
 运行后主界面：
@@ -61,7 +77,8 @@ elbow_layout/
 ├─ main.py       CLI 入口
 ├─ launcher.py   PyInstaller 入口（V1）
 ├─ launcher2.py  PyInstaller 入口（V2）
-└─ configs/      示例配置 JSON
+├─ configs/      示例配置 JSON
+└─ release/      打包好的 Windows 一键启动 EXE（弯头放样工具V2.exe）
 ```
 
 ---
