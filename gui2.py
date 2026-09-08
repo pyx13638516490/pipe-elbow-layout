@@ -18,7 +18,7 @@ from .dxfout import DXFBuilder
 from .layout import generate_dxf
 from .models import ElbowInput, PieceInput
 from .report import build_report
-from .render import bevel_scene, elbow_scene, layout_scene, paint
+from .render import bevel_scene, elbow_scene, layout_scene, paint, to_svg
 
 PAD = 6
 
@@ -133,6 +133,7 @@ class App2(tk.Tk):
         ttk.Entry(ob, textvariable=self.v_out, width=28).pack(fill="x", padx=4, pady=(4, 0))
         ttk.Button(ob, text="浏览目录", command=self._browse).pack(fill="x", padx=4, pady=2)
         ttk.Button(ob, text="输出放样图 DXF", command=self.on_output_dxf).pack(fill="x", padx=4, pady=2)
+        ttk.Button(ob, text="输出 SVG 图 (浏览器可开)", command=self.on_output_svg).pack(fill="x", padx=4, pady=2)
         ttk.Button(ob, text="用 AutoCAD 打开", command=self.on_open_cad).pack(fill="x", padx=4, pady=(2, 4))
 
     def _build_tabs(self) -> None:
@@ -313,9 +314,32 @@ class App2(tk.Tk):
             rep_path = outdir / f"{stem}_report.txt"
             dxf_path = outdir / f"{stem}_template.dxf"
             rep_path.write_text(build_report(self.res), encoding="utf-8")
-            dxf_path.write_text(generate_dxf(self.res).to_string(), encoding="ascii")
+            dxf_path.write_text(generate_dxf(self.res).to_string(), encoding="utf-8")
             self.last_dxf = str(dxf_path)
             messagebox.showinfo("已输出", f"报告: {rep_path}\nDXF: {dxf_path}")
+        except Exception as e:
+            messagebox.showerror("输出失败", str(e))
+
+    def _current_scene(self):
+        tab = self.nb.index(self.nb.select())
+        if tab == 0:
+            return elbow_scene(self.res)
+        elif tab == 1:
+            return bevel_scene(self.inp)
+        return layout_scene(self.res)
+
+    def on_output_svg(self) -> None:
+        if self.res is None:
+            messagebox.showinfo("提示", "请先【自动计算】或【生成】")
+            return
+        try:
+            pts, ops = self._current_scene()
+            svg = to_svg(pts, ops, 1000, 800, margin=40)
+            outdir = Path(self.v_out.get().strip() or str(Path.home()))
+            outdir.mkdir(parents=True, exist_ok=True)
+            path = outdir / "elbow_view.svg"
+            path.write_text(svg, encoding="utf-8")
+            messagebox.showinfo("已输出", f"SVG 图已保存:\n{path}\n\n双击可在浏览器打开")
         except Exception as e:
             messagebox.showerror("输出失败", str(e))
 

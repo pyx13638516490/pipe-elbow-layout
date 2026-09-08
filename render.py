@@ -341,3 +341,63 @@ def scene_bbox(pts: List[Pt]) -> Tuple[float, float, float, float]:
     xs = [p[0] for p in pts]
     ys = [p[1] for p in pts]
     return (min(xs), min(ys), max(xs), max(ys))
+
+
+def to_svg(pts: List[Pt], ops: List[Op], width: int = 900, height: int = 700,
+           margin: int = 40) -> str:
+    """把绘制指令导出为 SVG 字符串（浏览器可直接打开，无需 CAD）。"""
+    if not pts:
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d"></svg>' % (width, height)
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    x0, x1 = min(xs), max(xs)
+    y0, y1 = min(ys), max(ys)
+    spanx = max(x1 - x0, 1e-6)
+    spany = max(y1 - y0, 1e-6)
+    scale = min((width - 2 * margin) / spanx, (height - 2 * margin) / spany)
+    offx = (width - spanx * scale) / 2.0
+    offy = (height - spany * scale) / 2.0
+
+    def tx(x): return offx + (x - x0) * scale
+    def ty(y): return height - offy - (y - y0) * scale
+
+    out = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
+           'viewBox="0 0 %d %d" style="background:#fff;font-family:sans-serif;">' % (width, height, width, height)]
+    for op in ops:
+        kind = op[0]
+        if kind == "poly":
+            _, pts2, fill, outline, wd = op
+            pstr = " ".join("%g,%g" % (tx(x), ty(y)) for (x, y) in pts2)
+            out.append('<polygon points="%s" fill="%s" stroke="%s" stroke-width="%s"/>' % (pstr, fill, outline, wd))
+        elif kind == "line":
+            _, pts2, color, wd = op
+            (ax, ay), (bx, by) = pts2
+            out.append('<line x1="%g" y1="%g" x2="%g" y2="%g" stroke="%s" stroke-width="%s"/>'
+                       % (tx(ax), ty(ay), tx(bx), ty(by), color, wd))
+        elif kind == "dash_line":
+            _, pts2, color, wd = op
+            pstr = " ".join("%g,%g" % (tx(x), ty(y)) for (x, y) in pts2)
+            out.append('<polyline points="%s" fill="none" stroke="%s" stroke-width="%s" stroke-dasharray="10,6"/>'
+                       % (pstr, color, wd))
+        elif kind == "text":
+            _, x, y, s, color, size = op
+            xm, ym, anchor = (tx(x), ty(y), "middle")
+            out.append('<text x="%g" y="%g" fill="%s" font-size="%d" text-anchor="%s">%s</text>'
+                       % (xm, ym, color, max(9, int(size)), anchor, s))
+        elif kind == "circle":
+            _, cx, cy, r, outline, fill = op
+            rr = max(3.0, r * scale * 1.0)
+            out.append('<circle cx="%g" cy="%g" r="%g" fill="%s" stroke="%s"/>'
+                       % (tx(cx), ty(cy), rr, fill, outline))
+        elif kind == "arc":
+            _, x0a, y0a, x1a, y1a, start, ext, color, wd = op
+            from math import radians, cos, sin
+            cx, cy = (x0a + x1a) / 2.0, (y0a + y1a) / 2.0
+            rr = abs(x1a - x0a) / 2.0
+            sa, ea = radians(start), radians(start + ext)
+            xa, ya, xb, yb = cx + rr * cos(sa), cy + rr * sin(sa), cx + rr * cos(ea), cy + rr * sin(ea)
+            large = 1 if abs(ext) > 180 else 0
+            out.append('<path d="M %g,%g A %g,%g 0 %d 1 %g,%g" fill="none" stroke="%s" stroke-width="%s"/>'
+                       % (tx(xa), ty(ya), rr * scale, rr * scale, large, tx(xb), ty(yb), color, wd))
+    out.append("</svg>")
+    return "\n".join(out)

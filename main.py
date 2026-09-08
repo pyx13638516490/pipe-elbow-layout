@@ -76,7 +76,7 @@ def main() -> int:  # pragma: no cover - CLI
 
     builder = generate_dxf(res)
     dxf_path = out_dir / f"{stem}_template.dxf"
-    dxf_path.write_text(builder.to_string(), encoding="ascii")
+    dxf_path.write_text(builder.to_string(), encoding="utf-8")
 
     print(report_txt)
     print()
