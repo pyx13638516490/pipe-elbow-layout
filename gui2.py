@@ -18,7 +18,8 @@ from .dxfout import DXFBuilder
 from .layout import generate_dxf
 from .models import ElbowInput, PieceInput
 from .report import build_report
-from .render import bevel_scene, elbow_scene, layout_scene, paint, to_svg
+from .render import (bevel_scene, elbow_scene, layout_scene, paint,
+                     paint_width_fit, to_svg)
 
 PAD = 6
 
@@ -155,10 +156,15 @@ class App2(tk.Tk):
         self.cv_bevel.pack(fill="both", expand=True, padx=4, pady=4)
         nb.add(t2, text=" 坡口/接口示意 ")
 
-        # 放样图
+        # 放样图(可垂直滚动)
         t3 = ttk.Frame(nb)
-        self.cv_layout = tk.Canvas(t3, bg="white", highlightthickness=1, highlightbackground="#ccc")
-        self.cv_layout.pack(fill="both", expand=True, padx=4, pady=4)
+        wrap3 = ttk.Frame(t3)
+        wrap3.pack(fill="both", expand=True, padx=4, pady=4)
+        self.cv_layout = tk.Canvas(wrap3, bg="white", highlightthickness=1, highlightbackground="#ccc")
+        sb3 = ttk.Scrollbar(wrap3, orient="vertical", command=self.cv_layout.yview)
+        self.cv_layout.configure(yscrollcommand=sb3.set)
+        self.cv_layout.pack(side="left", fill="both", expand=True)
+        sb3.pack(side="right", fill="y")
         nb.add(t3, text=" 放样图·下料 ")
 
     def _layout(self) -> None:
@@ -295,7 +301,7 @@ class App2(tk.Tk):
             paint(canvas, pts, ops, w, h, margin=50)
         elif canvas is self.cv_layout:
             pts, ops = layout_scene(self.res)
-            paint(canvas, pts, ops, w, h, margin=40)
+            paint_width_fit(canvas, pts, ops, max(canvas.winfo_width(), 200), margin=40)
 
     # ---------- 输出 ----------
     def _browse(self) -> None:

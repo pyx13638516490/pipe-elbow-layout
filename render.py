@@ -287,26 +287,7 @@ def layout_scene(res: ElbowResult) -> Tuple[List[Pt], List[Op]]:
 
 
 # ---------- 渲染到 Canvas ----------
-def paint(canvas, pts: List[Pt], ops: List[Op], width: int, height: int, margin: int = 40) -> None:
-    if not pts:
-        return
-    xs = [p[0] for p in pts]
-    ys = [p[1] for p in pts]
-    x0, x1 = min(xs), max(xs)
-    y0, y1 = min(ys), max(ys)
-    spanx = max(x1 - x0, 1e-6)
-    spany = max(y1 - y0, 1e-6)
-
-    # 等比例缩放(保持纵横比), 避免水平/竖直距离被拉伸成不一样长
-    sx = (width - 2 * margin) / spanx
-    sy = (height - 2 * margin) / spany
-    scale = min(sx, sy)
-    offx = (width - spanx * scale) / 2.0
-    offy = (height - spany * scale) / 2.0
-
-    def tx(x): return offx + (x - x0) * scale
-    def ty(y): return height - offy - (y - y0) * scale
-
+def _draw_ops(canvas, ops: List[Op], tx, ty) -> None:
     for op in ops:
         kind = op[0]
         if kind == "poly":
@@ -338,6 +319,54 @@ def paint(canvas, pts: List[Pt], ops: List[Op], width: int, height: int, margin:
                               start=start, extent=ext, style="arc", outline=color, width=wd)
         else:
             raise ValueError(f"unknown op: {kind}")
+
+
+def paint(canvas, pts: List[Pt], ops: List[Op], width: int, height: int, margin: int = 40) -> None:
+    if not pts:
+        return
+    canvas.delete("all")
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    x0, x1 = min(xs), max(xs)
+    y0, y1 = min(ys), max(ys)
+    spanx = max(x1 - x0, 1e-6)
+    spany = max(y1 - y0, 1e-6)
+
+    # 等比例缩放(保持纵横比), 避免水平/竖直距离被拉伸成不一样长
+    sx = (width - 2 * margin) / spanx
+    sy = (height - 2 * margin) / spany
+    scale = min(sx, sy)
+    offx = (width - spanx * scale) / 2.0
+    offy = (height - spany * scale) / 2.0
+
+    def tx(x): return offx + (x - x0) * scale
+    def ty(y): return height - offy - (y - y0) * scale
+
+    _draw_ops(canvas, ops, tx, ty)
+
+
+def paint_width_fit(canvas, pts: List[Pt], ops: List[Op], width: int, margin: int = 40) -> int:
+    """按宽度铺满绘制(等比例), 超出高度用滚动条看; 返回自然高度(px)。"""
+    if not pts:
+        canvas.configure(scrollregion=(0, 0, width, 1))
+        return 1
+    canvas.delete("all")
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    x0, x1 = min(xs), max(xs)
+    y0, y1 = min(ys), max(ys)
+    spanx = max(x1 - x0, 1e-6)
+    spany = max(y1 - y0, 1e-6)
+    scale = (width - 2 * margin) / spanx
+    offx = (width - spanx * scale) / 2.0
+    hpx = spany * scale + 2 * margin
+
+    def tx(x): return offx + (x - x0) * scale
+    def ty(y): return (y1 - y) * scale + margin   # 顶端对齐, y 向上
+
+    _draw_ops(canvas, ops, tx, ty)
+    canvas.configure(scrollregion=(0, 0, width, hpx))
+    return int(hpx)
 
 
 def scene_bbox(pts: List[Pt]) -> Tuple[float, float, float, float]:
