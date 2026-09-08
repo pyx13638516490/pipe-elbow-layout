@@ -1,0 +1,12 @@
+# 忽略构建产物与运行时缓存
+__pycache__/
+*.py[cod]
+build/
+build_v2/
+dist/
+out/
+*.spec
+.venv/
+venv/
+*.log
+.DS_Store

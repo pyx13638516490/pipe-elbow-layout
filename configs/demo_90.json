@@ -1,0 +1,13 @@
+{
+  "bend_angle_deg": 90.0,
+  "od": 108.0,
+  "thickness": 4.0,
+  "bevel_angle_deg": 30.0,
+  "root_face": 1.5,
+  "root_gap": 2.0,
+  "pieces": [
+    {"long_od": 86.0, "short_od": 41.2, "kind": "half"},
+    {"long_od": 171.9, "short_od": 82.5, "kind": "full"},
+    {"long_od": 86.0, "short_od": 41.2, "kind": "half"}
+  ]
+}
