@@ -244,42 +244,45 @@ def layout_scene(res: ElbowResult) -> Tuple[List[Pt], List[Op]]:
     ops: List[Op] = []
     pts: List[Pt] = []
     n_pts = 90
+    n = len(res.pieces)
 
     def cosc(u): return math.cos(u * 2.0 * math.pi / circ)
+    def pt(u): return circ * u / n_pts
 
-    y = 0.0
-    gap = max(circ * 0.10, 260.0)      # 相邻两节之间的空白(容纳文字)
-    for piece in res.pieces:
-        amp = piece.amp
-        L0 = piece.midline
-        e = piece.miter_edges
-        # 该节实际高度 = 中线长 + 上下两个正弦峰(valley)各外扩(振幅+坡口余量)
-        h_piece = L0 + 2.0 * amp + 2.0 * e * W
-        y0 = y + amp + e * W            # 让该节最低点落在 y
-        # 理论线(绿): 正弦, 不带坡口余量
-        theo_top = [(u, y0 + L0 + amp * cosc(u)) for u in (circ * i / n_pts for i in range(n_pts + 1))]
-        theo_bot = [(u, y0 - amp * cosc(u)) for u in (circ * i / n_pts for i in range(n_pts + 1))]
-        # 下切线(红): 带坡口余量
-        cut_top = [(u, y0 + L0 + e * W + amp * cosc(u)) for u in (circ * i / n_pts for i in range(n_pts + 1))]
-        cut_bot = [(u, y0 - e * W - amp * cosc(u)) for u in (circ * i / n_pts for i in range(n_pts + 1))]
-        if piece.kind == "half":        # 半节: 下端为方口(平直), 上端为斜口
-            ops.append(_poly(theo_top + [(circ, y0), (0, y0)], fill="#e6f2ff", outline="#228", width=1.2))
-            ops.append(_poly(cut_top + [(circ, y0), (0, y0)], fill="", outline="#f00", width=1.2))
-            pts.extend(theo_top + [(circ, y0), (0, y0)] + cut_top)
-        else:                            # 全节: 上下都是斜口
-            ops.append(_poly(theo_top + list(reversed(theo_bot)), fill="#e6f2ff", outline="#228", width=1.2))
-            ops.append(_poly(cut_top + list(reversed(cut_bot)), fill="", outline="#f00", width=1.2))
+    hs = [p.midline + 2.0 * p.amp + 2.0 * p.miter_edges * W for p in res.pieces]
+    gap = max(circ * 0.08, 230.0)
+    total = sum(hs) + gap * (n - 1)
+    y_top = total                 # 第1节在最上面
+    for i, p in enumerate(res.pieces):
+        amp = p.amp
+        L0 = p.midline
+        e = p.miter_edges
+        ybot = y_top - hs[i]      # 该节最低点
+        theo_top = [(pt(j), ybot + amp + L0 + amp * cosc(pt(j))) for j in range(n_pts + 1)]
+        if p.kind == "full":
+            theo_bot = [(pt(j), ybot + amp - amp * cosc(pt(j))) for j in range(n_pts + 1)]
+            ops.append(_poly(theo_top + list(reversed(theo_bot)),
+                             fill="#e6f2ff", outline="#228", width=1.3))
+            cut_top = [(pt(j), ybot + amp + L0 + W + amp * cosc(pt(j))) for j in range(n_pts + 1)]
+            cut_bot = [(pt(j), ybot + amp - W - amp * cosc(pt(j))) for j in range(n_pts + 1)]
+            ops.append(_poly(cut_top + list(reversed(cut_bot)), fill="", outline="#f00", width=1.3))
             pts.extend(theo_top + theo_bot + cut_top + cut_bot)
-        # 标注放在该节下方的间隔里, 不与曲线重叠
-        lbl_y = y0 + h_piece - amp - e * W + gap * 0.30
-        ops.append(_text(6, lbl_y, f"#{piece.index+1} {piece.kind}  下料长={piece.long_cut:.1f}"
-                        f"  短={piece.short_cut:.1f}  中线={L0:.1f}", color="#000", size=11))
+        else:                     # half: 下端方口
+            ops.append(_poly(theo_top + [(circ, ybot), (0, ybot)],
+                             fill="#e6f2ff", outline="#228", width=1.3))
+            cut_top = [(pt(j), ybot + L0 + W + amp * cosc(pt(j))) for j in range(n_pts + 1)]
+            ops.append(_poly(cut_top + [(circ, ybot), (0, ybot)], fill="", outline="#f00", width=1.3))
+            pts.extend(theo_top + [(circ, ybot), (0, ybot)] + cut_top)
+        # 标注放在该节下方间隔
+        lbl_y = ybot - gap * 0.40
+        ops.append(_text(6, lbl_y, f"#{i+1} {p.kind}  下料长={p.long_cut:.1f}"
+                        f"  短={p.short_cut:.1f}  中线={L0:.1f}", color="#000", size=11))
         pts.append((6, lbl_y))
-        y += h_piece + gap
-    # 标题
-    ops.append(_text(6, y + 8, f"放样展开图 (n={res.n})  直管用量≈{res.material_len:.1f} mm",
+        y_top = ybot - gap
+    # 标题(底部)
+    ops.append(_text(6, y_top + 6, f"放样展开图 (n={res.n})  需用直管≈{res.material_len:.1f} mm",
                      color="#000", size=14))
-    pts.append((6, y + 8))
+    pts.append((6, y_top + 6))
     return pts, ops
 
 

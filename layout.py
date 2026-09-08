@@ -27,7 +27,7 @@ def _poly(builder: DXFBuilder, layer: str, pts) -> None:
 
 def draw_piece(builder: DXFBuilder, piece: PieceResult, od: float, y_base: float,
                W: float, x_lay: float = 0.0) -> float:
-    """画出单节模板；该节最低点落在 y_base，返回该节占用高度。"""
+    """画出单节模板（闭合形状）；该节最低点落在 y_base，返回该节占用高度。"""
     circ = _circ(od)
     amp = piece.amp
     L0 = piece.midline
@@ -44,21 +44,20 @@ def draw_piece(builder: DXFBuilder, piece: PieceResult, od: float, y_base: float
             pts.append((x_lay + u, yb + v + shift_y))
         return pts
 
-    # ---- 理论线 (绿) ----
+    # 闭合模板轮廓: 上正弦 + 下正弦(或方口) + 两端竖边(由 close 自动连接)
+    theo_top = curve(L0, True)
     if kind == "full":
-        _poly(builder, "THEO", curve(L0, True))
-        _poly(builder, "THEO", curve(0.0, False))
+        theo_pts = theo_top + curve(0.0, False)[::-1]
     else:  # half: 下端方口平直
-        builder.add_line("THEO", x_lay, y_base, x_lay + circ, y_base)
-        _poly(builder, "THEO", curve(L0, True))
+        theo_pts = theo_top + [(x_lay + circ, y_base), (x_lay, y_base)]
+    builder.add_polyline("THEO", theo_pts, closed=True)
 
-    # ---- 下切线 (红, 含坡口余量) ----
+    cut_top = curve(L0 + e * W, True)
     if kind == "full":
-        _poly(builder, "CUT", curve(L0 + e * W, True))
-        _poly(builder, "CUT", curve(-e * W, False))
+        cut_pts = cut_top + curve(-e * W, False)[::-1]
     else:
-        builder.add_line("CUT", x_lay, y_base, x_lay + circ, y_base)
-        _poly(builder, "CUT", curve(L0 + W, True))
+        cut_pts = cut_top + [(x_lay + circ, y_base), (x_lay, y_base)]
+    builder.add_polyline("CUT", cut_pts, closed=True)
 
     # ---- 长/短边参考线 (青) ----
     y_top_long = yb + L0 + amp
