@@ -10,3 +10,6 @@ out/
 venv/
 *.log
 .DS_Store
+
+# 独立小工具(不纳入仓库)
+param_tool.py

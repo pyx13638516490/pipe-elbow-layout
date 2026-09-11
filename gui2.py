@@ -20,7 +20,6 @@ from .models import ElbowInput, PieceInput
 from .report import build_report
 from .render import (bevel_scene, elbow_scene, layout_scene, paint,
                      paint_width_fit, to_svg)
-from .param_tool import ParamTool
 
 PAD = 6
 
@@ -127,7 +126,6 @@ class App2(tk.Tk):
         btn.pack(fill="x", pady=(8, 0))
         ttk.Button(btn, text="自动计算", command=self.on_autogen).pack(fill="x")
         ttk.Button(btn, text="生成 (用表中的长/短边)", command=self.on_compute).pack(fill="x", pady=(4, 0))
-        ttk.Button(btn, text="参数影响工具 (D / φ)", command=self.on_param_tool).pack(fill="x", pady=(4, 0))
 
         # 输出
         ob = ttk.LabelFrame(left, text="输出")
@@ -277,13 +275,6 @@ class App2(tk.Tk):
             self._compute()
         except Exception as e:
             messagebox.showerror("生成失败", str(e))
-
-    def on_param_tool(self) -> None:
-        """打开"D 与 φ 对展开正弦曲线的影响"小工具。"""
-        try:
-            ParamTool(self)
-        except Exception as e:
-            messagebox.showerror("无法打开工具", str(e))
 
     # ---------- 绘制 ----------
     def _paint_all(self) -> None:
